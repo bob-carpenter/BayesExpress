@@ -2,9 +2,10 @@
 
 \usepackage[utf8]{inputenc}
 \usepackage{mathpazo}
-\renewcommand{\baselinestretch}{1.1}
+  \renewcommand{\baselinestretch}{1.1}
 \usepackage{amssymb}
 \usepackage{amsmath}
+\usepackage[font={small,it}]{caption}
 \usepackage{fancyvrb}
 \usepackage[letterpaper, left=1.5in, right=1.5in, top=1in, bottom=1in]{geometry}
 \usepackage{hyperref}
@@ -62,6 +63,7 @@
 \newcommand{\ilogit}{\logit^{-1}}
 \newcommand{\rngto}[1]{1{:}#1}
 \newcommand{\setcomp}[2]{\{ #1 \, : \, #2 \}}
+\newcommand{\deriv}[1]{\frac{\textrm{d}}{\textrm{d}#1}}
 
 % constants
 \newcommand{\mybase}[1]{\texttt{#1}\xspace}
@@ -77,7 +79,7 @@
 
 % formatting
 \newcommand{\stancode}[1]{\verbfilebox[\small]{../../stan/#1}\theverbbox}
-\newcommand{\mycaption}[2]{\caption{\small\it #2}\label{#1}}
+\newcommand{\mycaption}[2]{\caption{#2}\label{#1}}
 
 
 \setlength{\floatsep}{24pt}
@@ -714,9 +716,9 @@ generated in the 3' to 5' direction, producing an antisense read.
 due to antisense reads using strand-specific RNA-seq.
 
 A major complication with alignment is that a short sequence of bases
-may align to one or more regions of the genome. Although it would be
-possible for each 50-base sequence to be unique (there are $4^{50}$ of
-them, an astronomically large number), there are motifs that are
+may align to more than one location on the genome. Although it would
+be possible for each 50-base sequence to be unique (there are $4^{50}$
+of them, an astronomically large number), there are motifs that are
 repeated across genes.
 
 
@@ -992,13 +994,8 @@ We will use a very simple parameterization, with a single variable
 %
 With this transcript composition, the number of reads we expect to see
 that include the cassette exons should be proportional to $L_1 \cdot
-\psi$, with the expect
-*****
-distinctive reads expected that exclude the cassette exon being
-proportional to $L_2 \cdot (1 - \psi)$.
-
-and a number of reads from
-isoform 2 proportional to $L_2 \cdot (1 - \psi)$.  This allows us to
+\psi$, with the number of reads that exclude the cassette exon being
+proportional to $L_2 \cdot (1 - \psi)$.  This allows us to
 define a transformed variable,
 %
 \begin{itemize}
@@ -1018,6 +1015,11 @@ Given our data and parameter, we adopt a simple binomial likelihood,
   y \sim \textrm{binomial}(N, \theta).
 \]
 %
+The probability functions for the distributions we use are all given
+in Appendix~\ref{chap:distributions}.  A binomial likelihood means
+that the number of reads $y$ from the inclusion case (target $t = 1$)
+is the result of $N$ independent reads, each with a probability $\theta$
+of arising from the inclusion case. 
 
 \subsection{Prior and joint density}
 
@@ -1061,36 +1063,80 @@ also be a beta distribution.
 \end{eqnarray*}
 
 
-\subsection{Adjusting for hexamer bias}
+\section{Adjusting for read non-uniformity}
 
-We have assumed that $L_k$ is the number of reads that are distinctive
-for isoform $k$. We then take the probability of a read originating
-from isoform $k$ to be proportional to $\theta_k \cdot L_k$ where
-$\theta_k$ is the proportion of that isoform. This amounts to an
-implicit uniformity assumption for the reads in the sense of being
-equally likely to originate from anywhere.
+Our first model does a simple length adjustment for a target, which
+carries with it the implicit assumption that the probability of a read
+from any position in a target is equally likely.  In practice, reads
+are highly non-uniform.  \cite{roberts2011improving} show that
+adjusting for this non-uniformity improves estimation accuracy.
 
-In practice, reads are in fact highly non-uniform. One effect is that
-of the hexamer binding that is used during the in vitro process
-preceding sequencing. Despite the transcriptome having a fairly
-uniform distribution of hexamer.
+\subsection{Adjusting for hexamer priming}
 
-\cite{hansen2010biases} report consistent variation across sequencing
-runs on the order of $10^3$ among hexamers in their probability of
-being sequenced, despite the relative uniformity of the hexamer
-distribution across the transcriptome.
+Hexamer priming, the \textit{in vitro} sample preparation step that
+selects mRNA fragments for sequencing is particularly non-uniform.%
+\footnote{The biology literature refers to this as ``bias'', but we 
+  will reserve that term for the expected error of an estimator.}
+\cite{hansen2010biases} report consistent variation on the order of
+$10^3$ in the probability of a read based on its initial (5' end)
+hexamer (sequence of six bases).
+
+To account for the non-uniformity of hexamer priming, we only need to
+modify our interpretation of the length adjustment $L_t$.  
+Rather than treating it as the number of distinctive read positions
+for target $t$, we can weight the read positions by their hexamer
+binding probability.  That is, we set
+\[
+  L_t = \sum_{n = 1}^{N_t} \, w_{n,t},
+\]
+where $w_{n,t} \in (0, \infty)$ is a weight proportional to the
+probability of a read at position $n$ in target $t$.  The definition
+of read probability $\theta$ as being proportioanl to $\psi_t \, L_t$
+makes sure the read probabilities are properly normalized in the
+resulting binomial model.
+
+Our existing model reduces to the case where $w_{n,t} = 1$ for all  
+positions $n$ and targets $t$.  Thus weighting continuously expands
+our model's representation power.
+
+One way to set the weight $w_{n,t}$ is based on the probability of
+reading  the hexamer that begins at position $n$ of target $t$.
+
+\subsection{Adjusting for position-based variability}
+
+\cite{roberts2011improving} also show that the probability of a read
+depends not only on the hexamer used for priming, but also on the
+positional offset from the start (or end) of the target transcript.
+
+Like hexamer binding weights, positional dependence may also factor
+into the definition of weights $w_{n, t}$.  For example, if
+$h_{n, t} \geq 0$ is the hexamer binding weight for position $n$ of
+transcript $t$ and $l_{n, t} \geq 0$ is a positional probability based
+on location in the transcript, then weights can be defined to take
+both hexamer binding and position into account by setting
+\[
+  w_{n, t} = h_{n, t} \, l_{n, t}.
+\]
+This weighting amounts to an independence assumption between the
+hexamer effect and the positional effect, but other combinations could
+be used.  As long as the weights are positive, they will properly
+normalize. 
+
+Either position-based or hexamer-binding adjustments may be made, or
+they both may be made.  Other adjustments may also be factored into
+the weights such as alignment probabilities as long as they are
+proportional to aligning a read at position $n$ in target $t$
+conditional on getting a distinctive read from target $t$.
 
 
 \section{Logistic regression reparameterization of beta-binomial}
 
 The simple beta-binomial model for proportion of cassette exons
-spliced in can be reparameterized in terms of log odds. In particular,
-we can take a proportion on the log odds scale,
-%
-\begin{itemize}
-\item $\alpha \in \mathbb{R}$, log odds of splicing in.
-\end{itemize}
-%
+spliced in can be reparameterized in terms of log odds.  The advantage
+of doing this is that log odds are unconstrained in $\mathbb{R}$ and
+thus easier to work with computationally and to generalize to multiple
+effects, time-series, etc.
+
 If $\psi \in (0, 1)$ is a proportion, its log odds are defined to be
 \[
   \logit(\psi) = \log \frac{\psi}{1 - \psi},
@@ -1099,40 +1145,101 @@ with inverse
 \[
   \ilogit(\alpha) = \frac{1}{1 + \exp(-\alpha)}.
 \]
-We know that if
+
+Suppose we start with a variable with a uniform distribution over 
+proportions, 
+\[
+  \psi \sim \textrm{uniform}(0, 1). 
+\]
+We can then define its log odds transform to be $\alpha =
+\logit(\psi)$ and work out the distirbution of $\alpha$ through the
+usual change-of-variables formula,
+%
+\begin{eqnarray*}
+  p_{\alpha}(\alpha)
+  & = & p_{\psi}(\ilogit(\alpha))
+        \, \left| \deriv{\alpha} \ilogit(\alpha) \right|
+  \\[4pt]
+  & = & \ilogit(\alpha) (1 - \ilogit(\alpha))
+  \\[4pt]
+  & = & \textrm{logistic}(\alpha \mid 0, 1).
+\end{eqnarray*}        
+%
+Therefore, if we have a proportion variable with a uniform
+distribution, 
 \[
   \theta \sim \textrm{beta}(1, 1),
 \]
-then by construction,
+then by construction, its log odds will have a standard logistic
+distribution, 
 \[
   \logit(\theta) \sim \textrm{logistic}(0, 1).
 \]
-Therefore, if we take a log odds variable with a standard logistic
-distribution,
+
+This allows us to reparameterize the model in terms of a log odds
+parameter $\alpha$ with a standard logistic distribution,
 \[
-  \alpha \sim \textrm{logistic}(0, 1),
+  \alpha \sim \textrm{logistic}(0, 1).
 \]
-and then we define
+We then take the proportion spliced in variable $\psi$ by inverting
+the log odds function,
 \[
-  \psi = \ilogit(\alpha)
+  \psi = \ilogit(\alpha).
 \]
-and carry out the same length normalization,
+We then carry out the same weighted normalization on the proportion as
+before, 
 \[
-  \theta = \frac{\psi \cdot L_1}{\psi \cdot L_1 + (1 - \psi) \cdot L_2},
+  \theta = \frac{\psi \cdot L_1}{\psi \cdot L_1 + (1 - \psi) \cdot L_2}.
 \]
-then our likelihood is the same as before,
+This allows us to use the same likelihood,
 \[
   y \sim \textrm{binomial}(N, \theta).
 \]
 Because we have only changed the scale of the variables and adjusted
-for the change, the beta-binomial and logistic-regression models
-provide the same posterior distribution for $\psi$ and $\theta$, with
-$\alpha = \logit(\psi)$.
+for the change of variables, the beta-binomial and logistic-regression
+models provide the same posterior distribution for $\psi$, $\theta$,
+and $\alpha = \logit(\psi)$.
 
 This logistic regression parameterization of the beta-binomial model
 is no longer conjugate, in the sense that the posterior is not a
 logistic distribution.  Nevertheless, we can carry out inference in
 this model using Markov chain Monte Carlo (MCMC) sampling.
+
+\subsection{Normal vs.\ logistic prior}
+
+Our initial model assumed a uniform distribution on a proportion,
+whereas the model in this section uses a standard logistic prior on
+the log odds.  Typically in hierarchical or multilevel models, we see
+normal distributions used as priors rather than logistic
+distributions (see, for example, the multilevel analyses in the
+regression text of \cite{gelman2006data} or the general introduction
+to Bayes of of \cite{lunn2013bugs}).
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{../../img/ilogit-logistic-vs-normal.pdf}
+  \mycaption{fig:logistic-vs-normal}{Comparison of the density of log
+    odds transforms of a standard logistic distribution (left) and a
+    normal distribution with matching mean and standard deviation
+    (right).  The shape of the normal distribution curve approaching
+    the boundaries indicates that it has slightly narrower tails than
+    the matching logistic distribution, but no enough to be of
+    concern.  We generated this plot analytically, but it can also be
+    illustrated by simulation by generating random logistic and normal
+    variates, transforming, and plotting histograms.}
+\end{figure}
+%
+The standard deviation of a standard logistic distribution is $\pi /
+\sqrt{3}$.  Thus $\textrm{logistic}(0, 1)$ variates and
+$\textrm{normal}(0, \pi / \sqrt{3})$ variates have the same
+expectation and standard deviation.  The main difference is that the
+tails of the logistic distribution are slightly wider than that of the
+normal.  Figure~\ref{fig:logistic-vs-normal} shows the results of
+applying a log odds transform to a $\textrm{logistic}(0, 1)$ variate
+versus a $\textrm{normal}(0, \pi / \sqrt{3})$ variate.  The results
+only differ in that the tails of the logistic distribution are
+slightly wider.  As such, we will not worry about the difference and
+stick to the more familiar normal priors going forward.
 
 
 % BACK MATTER
@@ -1144,7 +1251,7 @@ this model using Markov chain Monte Carlo (MCMC) sampling.
 \bibliography{../bib/references}
 \appendix
 
-\chapter{Parametric distributions}
+\chapter{Parametric distributions}\label{chap:distributions}
 
 The distributions we have chosen to use have numerous formulations in
 the literature.  Rather than sprinkling them through the text, we
