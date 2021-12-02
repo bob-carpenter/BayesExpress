@@ -7,16 +7,17 @@ functions {
 }
 data {
   int<lower=0> N;
-  int<lower=0, upper=N> y;
+  int<lower=1, upper=T> y;
+  int<lower=1, upper =T>
   array[2] real<lower=0> L;
 }
 parameters {
-  real<lower=0, upper=1> psi;
+  real<lower=0, upper=1> theta;
 }
 transformed parameters {
-  real<lower=0, upper=1> theta = length_adjust(psi, L);
+  real<lower=0, upper=1> phi = length_adjust(psi, L);
 }
 model {
-  psi ~ beta(1, 1);
-  y ~ binomial(N, theta);
+  theta ~ beta(1, 1);
+  y ~ binomial(N, phi);
 }

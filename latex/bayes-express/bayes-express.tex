@@ -55,6 +55,7 @@
     dimen/.style={<->,>=latex,thin,every rectangle node/.style={fill=white,midway,font=\sffamily}},
     symmetry/.style={dashed,thin},
   }
+% \usepackage{tocbibind}
 \usepackage{verbatimbox}
 \usepackage{xspace}
 
@@ -62,8 +63,10 @@
 \newcommand{\logit}{\textrm{logit}}
 \newcommand{\ilogit}{\logit^{-1}}
 \newcommand{\rngto}[1]{1{:}#1}
+\newcommand{\setlist}[1]{\{ #1 \}}
 \newcommand{\setcomp}[2]{\{ #1 \, : \, #2 \}}
 \newcommand{\deriv}[1]{\frac{\textrm{d}}{\textrm{d}#1}}
+
 
 % constants
 \newcommand{\mybase}[1]{\texttt{#1}\xspace}
@@ -80,7 +83,7 @@
 % formatting
 \newcommand{\stancode}[1]{\verbfilebox[\small]{../../stan/#1}\theverbbox}
 \newcommand{\mycaption}[2]{\caption{#2}\label{#1}}
-
+\newcommand{\anitem}[1]{\begin{itemize} \item #1 \end{itemize}}
 
 \setlength{\floatsep}{24pt}
 
@@ -1244,24 +1247,28 @@ stick to the more familiar normal priors going forward.
 
 \chapter{Ambiguously Aligned Reads}
 
-In transcriptome analysis, it is not unusual to find reads that align
-to more than one isoform.  Furthermore, alignment tools based on
-shredding reads into $k$-mers, such as Sailfish \citep{patro2014sailfish} and
-kallisto \citep{bray2016near}, return sets of targets compatible with
-a read rather than a distinct alignment position.  Statistically, we
-will treat the true source of a read as missing data.
+In transcriptome analysis, because exons and their junctions can be
+repeated in multiple isoforms, reads often align to more than one
+isoform.  Furthermore, alignment tools based on shredding reads into
+$k$-mers, such as Sailfish \citep{patro2014sailfish} and kallisto
+\citep{bray2016near}, return sets of targets compatible with a read
+rather than a distinct alignment position.  Statistically, we will
+treat the true source of a read as missing data, whose value we will
+estimate using Bayesian posterior inference just as we do for other
+unknowns. 
 
 \section{Cassette exon example}
 
-Sticking to the example we were working with before, suppose we have
-two isoforms, one with and one without a cassette exon, as shown in
+Sticking to our running example, suppose we have two isoforms, one
+with and one without a cassette exon, as shown in
 Figure~\ref{fig:cassette-exon}.  Labeling the three exons $A$, $B$,
 and $C$, in sequence, the two isoforms are then $ABC$ and $AC$, with
 cassette exon $B$ either included or not.  Now suppose that we do a
-simple alignment of reads to the genome and discard reads that cross
-exon junctions.  All of our reads will then fall entirely wtihin exons
-$A$, $B$, or $C$.  The only distinctive read for inclusion is one
-falling in $B$; there are no distinctive reads for exclusion.
+simple contiguous alignment of reads to the genome, which will not be
+able to align reads that cross exon junctions.  Each of the reads in
+this situation will fall entirely within exon $A$, $B$, or $C$.  The
+only distinctive read for inclusion is one falling in $B$; there are
+no distinctive reads for exclusion.
 
 A simple thought experiment demonstrates how we can infer expression
 even without any distinctive reads for one of the targets.  even in
@@ -1270,65 +1277,82 @@ $A$, 30 reads from $B$, and 100 reads from $C$.  The reads from $A$
 and $C$ are ambiguous in that they are present in both isoforms (with
 and without the cassette exon).  We clearly cannot estimate the
 proportion of the inclusion isoform from only the 30 distinctive reads
-aligning to $B$.  But we can with all of the reads.  One way to get
-the right number of reads is to assume the inclusion isoform
-generates 30 reads from $A$, 30 from $B$, and 30 from $C$, while the
-exclusion isoform generates 70 reads from $A$ and 70 from $C$.  The
-proportion of reads assigned to the inclusion isoform is thus
+aligning to $B$.  But we can with all of the reads.  To show that
+there is a solution to the inverse problem of expression given
+ambiguous reads, we highlight the maximum likelihood solution.
+Assuming the exons are all the same length and reads from them are
+uniform, the best fit will be where the inclusion isoform is spliced
+in 30\% of the time. That way, the
+inclusion isoform generates generates 30 reads from $A$, 30 from $B$,
+and 30 from $C$, while the exclusion isoform generates 70 reads from
+$A$ and 70 from $C$.  The proportion of reads expected to arise from the
+inclusion isoform given the observed alignments is
 \[
-  \hat{\theta} \ = \ \frac{30 + 30 + 30}{(30 + 30 + 30) + (70 + 70)}
+  \widehat{\theta} \ = \ \frac{30 + 30 + 30}{(30 + 30 + 30) + (70 + 70)}
   \ \approx \ 0.39.
 \]
-If we assume the exon lengths are all the same, the inclusion form has
-length $L_1 = 90$ and the exclusion form has length $L_2 = 60$.
-Without adjusting length further (e.g., with hexamer binding or
-positional weighting), we expect 3 inclusion reads for every 2
-exclusion reads if they have the same expression level.  In general,
-we know that the proportion of inclusion reads will be
+Given our assumption that the exon lengths are all the same, the
+inclusion form has length $L_1 = 90$ and the exclusion form has length
+$L_2 = 60$.  Without adjusting length further (e.g., with hexamer
+binding or positional weighting), we expect 3 inclusion reads for
+every 2 exclusion reads if they have the same expression level.  In
+general, if $\psi$ is the proportion of reads with the cassette exon
+included, we expect the proportion of inclusion reads to be
 \[
   \theta = \frac{\psi L_1}{\psi L_1 + (1 - \psi) L_2}.
 \]
-We can solve for $\psi$,
+We can solve for $\psi$ as a function of $\theta$,
 \[
-  \psi = \frac{-\theta L_2}{\theta L_1 - \theta L_2 - L_1},
+  \psi = \frac{-\theta L_2}{\theta L_1 - \theta L_2 - L_1}.
 \]
-and plug in $\hat{\theta}$, $L_1$, and $L_2$ to get
-$\hat{\psi} = 0.30$, just as we'd expect.  All that remains is to
-formalize the problem as a Bayesian posterior inference problem, in
-order to derive uncertainty in our estimates.
+We then plug in $\widehat{\theta}$, $L_1$, and $L_2$ to get
+$\widehat{\psi} = 0.30$, just as we'd expect.  In the rest of the chapter,
+we show how to formalize this intuition as a Bayesian posterior
+inference problem, which will allow us to quantify uncertainty in our
+estimates. 
 
 
 \section{Data format}
 
-As before, we will assume there are $T \in \mathbb{N}$ target
-sequences and $N \in \mathbb{N}$ reads.  As before, we restrict
-attention at first to $T = 2$ targets, such as the set of transcripts
-with a cassette exon included and those where it's excluded.
-
+As before, we will assume
+%
+\anitem{$T \in \mathbb{N}$ is the number of target sequences.}
+%
+As before, we restrict attention at first to $T = 2$ targets, such as  
+the set of transcripts with a cassette exon included and those where  
+it's excluded.  We also continue to assume
+%
+\anitem{$N \in \mathbb{N}$ is the number of reads.}
+%
 Rather than requiring each read $n \in \rngto{N}$ to map to a single
-target in $\rngto{T}$, our observed data will be a set of possible
-targets,
-\[
-  y_n \subseteq \rngto{T}.
-\]
-Such a set may be derived from the compatiblity sets of
-\cite{bray2016near}.  In the splicing-in comparison, with $T = 2$,
-some reads will be compatible with inclusion and with exclusion of the
-cassette exon.
+target in $\rngto{T}$, our modeled data will assume
+%
+\anitem{$y_n \subseteq \rngto{T}$ are the targets compatible with read
+  $n \in \rngto{N}$.}
+%
+This data format is consistent with the compatiblity sets introduced
+by \cite{bray2016near}.  In the splicing-in comparison, with $T = 2$,
+some reads will be compatible with both inclusion and with exclusion
+of the cassette exon (i.e., $y_n = \{ 1, 2 \}$).
 
-We also assume generalized weights $L_t \in (0, \infty)$ for each
-target $t \in T$, which will be used as in the previous chapter to
+We also assume
+%
+\anitem{$L_t \in (0, \infty)$ is proportional to the expected read count for
+  a single instance of target $t \in \rngto{T}$,}
+%
+which will be used as in the previous chapter to
 adjust the expected number of reads for a given expression level.
 
 
 \section{Generative model}
 
-The generative model for reads does not change.  Continuing with the
-running example of cassette exons, we still assume
-reads are generated by drawing a random sequence from mRNA distributed
-according to the proportion spliced in, $\psi \in (0, 1)$, with
-sequences then drawn according to their weight, which might adjust for
-position, binding hexamer, etc.
+The generative model for ambiguous reads is derived directly from the
+model for distinctively aligned reads.  For example, in the running
+example of cassette exons, we still assume reads are generated by
+drawing a random sequence from mRNA distributed according to the
+proportion spliced in, with sequences then drawn
+according to their weight, which might adjust for position, binding
+hexamer, etc.
 
 \subsection{Latent alignment parameterization}
 
@@ -1337,30 +1361,30 @@ compatiblity set was the correct source of read $n$?  We would
 proceed as we did when we were using distinctively aligned reads.
 From a technical perspective, we just work backward and introduce a
 discrete parameter representing the origin of the read,
-\[
-  z_n \in \rngto{T}, \ \textrm{for} \ n \in \rngto{N}.
-\]
+%
+\anitem{$z_n \in \rngto{T}$ is the unknown alignment for read $n \in \rngto{N}$.}
+%
 We further know that $z_n$ satisfies the constraint of being
-compatible with $y_n$.  The sampling distribution for drawing a read
-is
-\[
-  z_n \sim \textrm{Bernoulli}(\theta),
-\]
-where, as before, $\theta$ is the adjusted probability of reading from
-sequence 1.
+compatible with $y_n$ (i.e., $z_n \in y_n$).  
 
 
 \subsection{Complete data likelihood}
 
 The likelihood derivation here is complicated by the fact that we do
-not observe $z_n \in \rngto{T}$, only $y_n \subseteq \rngto{T}$.  The
-trick we will use is to define a complete data likelihood function
-$p(y, z \mid \psi, L)$ and then marginalize out $z$ to derive a
-likelihood
+not observe $z_n \in \rngto{T}$, only $y_n \subseteq \rngto{T}$.  We
+will get around this problem by defining a complete data likelihood
+function $p(y, z \mid \psi, L)$ for the observed data $y$ (potentially
+ambiguous alignment) and missing data $z$ (unambiguous true alignment)
+and then marginalize out $z$ to derive a likelihood using the law of
+total probability,
 \[
   p(y \mid \psi, L) = \sum_z p(y, z \mid \psi, L).
 \]
-We will factor the complete data likelihood as
+We will factor the complete data likelihood in the usual way for
+missing data problems, by assuming the noisy observations are 
+generated conditional on the missing data and the missing data is
+generated accoding to our underlying model as if we had observed it.
+That is, we factor our complete data likelihood as 
 \[
   p(y, z \mid \psi, L) = p(y \mid z) \, p(z \mid \psi, L).
 \]
@@ -1374,31 +1398,33 @@ where as before,
 \[
   \theta = \frac{\psi \, L_1}{\psi \, L_1 + (1 - \psi) \, L_2}
 \]
-is the weight adjusted probability of an inclusion read.
+is the weight adjusted probability of reading from the first target
+(e.g., an inclusion read in the running cassette exon example).
 
 The complete data likelihood is fully defined by
 assuming that the compatiblity set $y_n$ is chosen uniformly among
-the finite set of possibilities including $z_n$,\footnote{For those
-  who are counting, the size of this set is $2^{T - 1}$.}
+the finite set of possibilities including $z_n$.  Using our notation
+for discrete uniform distributions over a set, we can write this as
 \[
-  y_n \sim \textrm{uniform}\!\left(\{ z_n \} \cup 2^{\rngto{T} \ \setminus \ z_n}\right),
+  y_n \sim \textrm{uniform}\!\left(\setcomp{A \subseteq \rngto{T}}{y_n
+      \in A}\right).
 \]
-where $2^A = \{ a : a \subseteq A \}$ is the powerset operator and
-$A \setminus b = \{ a : a \in A, a \neq b \}$ is the set difference
-operator.
+The size of the set $\setcomp{A \subseteq \rngto{T}}{y_n \in A}$ is
+$2^{T-1}$, with one element for every subset of $\rngto{T}$ not
+including $y_n$.
 
 \subsection{Likelihood}
 
-Now we turn the crank to marginalize out the missing data variables
-$z$.  The first step is to localize the effect of the missing data to
-single observations.  Our complete-data likelihood factors by
-observation as
+Now we can just turn the crank to marginalize out the missing data
+variables $z$.  The first step is to localize the effect of the
+missing data to single observations.  Our complete-data likelihood
+factors by observation as
 \[
   p(y, z \mid \psi, L)
   = \prod_{n=1}^N p(y_n, z_n \mid \psi, L).
 \]
-This allows us to work on marginalizing out one $z_n$ at a time, which
-gives us
+This makes the overall marginalization problem combinatorially
+tractable by allowing us to marginalize out one $z_n$ at a time,
 %
 \begin{eqnarray*}
   p(y_n \mid \psi, L)
@@ -1414,21 +1440,31 @@ gives us
 \subsection{Posterior inference on alignment}
 
 Even though we have marginalized out the missing data $z_n$
-corresponding to the alignment in $y_n$ for read $n$, we
+corresponding to the target from which read $n$ originates, we
 can perform inference on the missing values conditional on the
-parameters $\psi$ by noting that for $z_n \in y_n$, we have
+parameters $\psi$.  In particular, given $z_n \in y_n$, we have
+%
+\begin{eqnarray*}
+  p(z_n \mid y_n, \psi, L) & = & \frac{p(y_n \mid z_n) \, p(z_n \mid \psi, L)}{p(y_n)}
+  \\
+  & \propto & p(z_n \mid \psi, L).
+\end{eqnarray*}
+%
+We can then normalize in the usual way by dividing through by all
+possibilities, to recover
 \[
-  p(z_n \mid y_n) \propto p(z_n \mid \psi, L),
-\]
-which normalizes by summing over the possible alignments,
-\[
-  p(z_n \mid y_n)
+  p(z_n \mid y_n, \psi, L)
   = \frac{p(z_n \mid \psi, L)}
          {\sum_{z \in y_n} \, p(z \mid \psi, L)}.
 \]
+This allows either sampling of $z_n$ values or direct calculation of
+posterior expectations.  Sampling is easier, because it leads to
+plug-in estimates, but working in expectation is much lower variance
+due to the Rao-Blackwell theorem \citep[Section~4.2]{robert2004monte}.
 
 
-\chapter{Multinomial Models}
+
+\chapter{Multiple Targets at Once}
 
 So far, we have only considered the two-target case, such as the
 inclusion rate of a cassette exon.  In this chapter, we extend our
@@ -1560,7 +1596,11 @@ Thus from now on, we will only consider the multinomial case.
 \nocite{aitchison1982statistical}
 \nocite{gelman2012we}
 \bibliographystyle{apalike}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{chapter}{Bibliography}
 \bibliography{../bib/references}
+
 \appendix
 
 \chapter{Parametric distributions}\label{chap:distributions}
