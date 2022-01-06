@@ -684,7 +684,7 @@ results in a nonsense substitution.
   \end{tabular}
   \\[12pt]
   \begin{tabular}{r|ccccccccccccl}
-    \textit{read} & & \baseG & $\bullet$ & \baseC & \baseG & \baseT & \baseT & \baseC & \baseA & \baseG &
+<    \textit{read} & & \baseG & $\bullet$ & \baseC & \baseG & \baseT & \baseT & \baseC & \baseA & \baseG &
     \\
     \textit{reference} & $\cdots$ & \baseG & \baseA & $\baseC$ & \baseG & \baseT & \baseT & \baseC & \baseA & \baseG & $\cdots$
     \\ \hline
@@ -743,14 +743,16 @@ is that the same models will apply to paired-end reads once they are
 reduced to target alignments.
 
 
-\section{Grouped samples}
+\section{Experimental design}
 
 RNA sequencing data consists of a set of biological samples arranged
 into groups representing one or more distinct biological conditions.
 Within a group, the samples may represent biological replicates (e.g.,
 tissue from multiple organisms or multiple cells within an organism)
 or technical replicates (e.g., multiple sequencing runs of the same
-sample).
+sample). The experimental design is determined by the number of groups
+in the experiment and the number of samples in each group, as well as
+the number of reads to be extracted from each sample.  
 
 \begin{table}[t!]
   \centering
@@ -775,7 +777,7 @@ sample).
     \\ \hline
     \footnotesize $\rngto{N}$ & \footnotesize $\rngto{S}$
     \\
-    \footnotesize (index) & \footnotesize (multi-index)
+    \footnotesize (index) & \footnotesize
     \\ \hline \hline
     $\vdots$ & $\vdots$
     \\ \hline
@@ -787,7 +789,7 @@ sample).
     \multicolumn{3}{c}{read alignment} \vspace*{2pt} \\ \hline
     \textit{read} & \textit{target} & \textit{score} \\ \hline
     \footnotesize $\rngto{N}$ & \footnotesize $\rngto{T}$ & \footnotesize {\sc float} \\
-    \footnotesize (index) & \footnotesize (multi-index) &
+    \footnotesize (multi-index) & &
     \\ \hline \hline
     $\vdots$ & $\vdots$ & $\vdots$
     \\ \hline
@@ -797,35 +799,51 @@ sample).
     with their groups. The second table (top right) assigns reads to
     their sample. The alignments are provided in the third table
     (bottom). Each alignment comes with a real-valued score, which is
-    rendered as a floating-point number. In all of the tables, the
-    first column serves as a unique index. In the read grouping and
-    alignment tables, the sample and target may also be reverse
-    indexed for more efficient access to all the reads in a sample or
-    all reads aligning to a target.} \end{table}
+    rendered as a floating-point number. In the sample and read
+    tables, the first column is a unique index.  In the read alignment
+    table, a read may appearin more than one row, so the index is not
+    unique.} \end{table}
 
-The experimental design is determined by
+\section{Relational representation}
+
+Although storage might be a few CSV files or a shared database,
+conceptually, our data is relational.  This section describes its
+relational format.
+
+\subsection{Grouping of samples}
+
+Suppose that we have a number of samples and groups, and a function
+mapping each sample to its group.
 %
 \begin{itemize}
-\item $S \in \mathbb{N}$, the number of samples,
-\item $G \in \mathbb{N}$, the number of groups, and
-\item $\textrm{group}_s \in \rngto{G}$, the group to which sample $s \in \rngto{S}$ belongs.
+\item $S \in \mathbb{N}$ is the number of samples,
+\item $G \in \mathbb{N}$ is the number of groups, and
+\item $\textrm{group}_s \in \rngto{G}$ is the group to which sample $s \in \rngto{S}$ belongs.
 \end{itemize}
 %
-Computationally, the grouping relation can be represented as a
-database table, the schema for which is shown in the upper left of
-Table~\ref{tab:rna-seq-data}. The samples are composed of reads,
-determined by
+The database schema for the grouping of samples is given in the top
+left of Table~\ref{tab:rna-seq-data}.  There is only one group for
+each sample, so the index is unique.  
+
+\subsection{Reads by sample}
+
+Mathematically, we can index all of the reads in our experiment and
+assume there is a function mapping the reads to the sample from which
+they were drawn.
 %
 \begin{itemize}
-\item $N \in \mathbb{N}$, the number of RNA sequence reads, and
-\item $\textrm{sample}_n \in \rngto{S}$, the sample from which read $n \in \rngto{N}$ is drawn.
+\item $N \in \mathbb{N}$ is the number of RNA sequence reads, and
+\item $\textrm{sample}_n \in \rngto{S}$ is the sample from which read
+  $n \in \rngto{N}$ is drawn. 
 \end{itemize}
 %
-The read provenance is represented as a database table the schema for
+The read provenance is represented as a database table, the schema for
 which is displayed in the upper right of Table~\ref{tab:rna-seq-data}.
+The function from read to sample is unique, so the index on the read
+coliumn is unique.  The reverse mapping is not unique, but there may
+still be an index to efficiently return the reads in a sample.
 
-
-\section{Read alignment to targets}
+\subsection{Read alignment to targets}
 
 Reads will be aligned to genome or transcriptome targets of interest.
 An alignment target might represent (a) a gene, (b) an isoform of a
@@ -836,25 +854,24 @@ filtered, a read may align to more than one target. These target
 alignments are aggregated from the primitive genome-level or
 transcriptome-level alignments.
 
-The targets and read alignments are given by
+In the database table, each read and target pair is assigned a score.
+Because we are working in probabilistic models, we will generally
+assume the score for a read/target pair is the log probability that
+of a random read from the specified target being the specified read.
+We need a new constant for the number of targets, plus a relation
+between reads and the targets to which they align.
 %
 \begin{itemize}
-\item $T \in \mathbb{N}$, the number of alignment targets, and
-\item $a^{\epsilon}_{n, t} =
-  \begin{cases}
-    1 & \textrm{if read} \ n \in \rngto{N}
-        \ \textrm{aligns to target} \ t \in \rngto{T}
-        \ \textrm{at distance} \ \delta < \epsilon,
-         \textrm{and}
-    \\
-    0 & \textrm{otherwise.}
-  \end{cases}$
+\item $T \in \mathbb{N}$ is the number of alignment targets, and
+\item $\log p(\textrm{read}_n \mid \textrm{target} = t) \leq 0$
+  is the log probability of the read given the target.
 \end{itemize}
-%
-In situations where thresholding has been done before adding items to
-the table, we use the shorthand $a_{n,t} = a^{\infty}_{n,t}$. The
-schema for this table is shown on the bottom row of
-Table~\ref{tab:rna-seq-data}.
+This probability may take into account hexamer biases, positional
+biases, etc.  In our subsequent models, we will assume it does not
+take into account read quality.  
+
+The relational schema for the aligned reads is shown in the bottom row
+of Table~\ref{tab:rna-seq-data}.
 
 
 \chapter{Distinctively Aligned Reads}
