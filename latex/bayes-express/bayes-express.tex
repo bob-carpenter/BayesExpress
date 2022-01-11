@@ -880,16 +880,15 @@ Like a master recipe, which may be adapted to different ingredients,
 the master model for RNA sequencing is a generative model of how reads
 are produced, which may be adapted to a wide variety of
 parameterizations, priors, and experimental designs.  The master model
-generates reads by first selecting the isoform from which the read is
-to be selected according to the composition of the sample.  The read
-itself is then generated according to the probability of reads in the
-selected isoform.
+generates reads by first selecting an isoform according to the
+distribution of isoforms in the sample, and then generating the read
+itself according to the probability of reads in the selected isoform.
 
 \section{Sample composition of isoforms}
 
 Suppose there is a total of $N$ reads targeting $T$ distinct isoforms.
 Our parameter of interest is a simplex $\theta \in \bigtriangleup\!^T$
-denoting the expected composition of our sample.\footnote{The set of
+denoting the expected composition of our sample.\footnote{The set
   $\bigtriangleup\!^T$ of $T$-simplexes is defined by
   \[
     \bigtriangleup\!^T
@@ -961,7 +960,7 @@ The complete data likelihood cannot be used directly because $z_n$ is
 not observed.  One approach might be to estimate the $z_n$ through
 sampling, but sampling discrete variables is a combinatorial problem
 which can often be slow or even intractable.  Instead, the standard
-approach is to marginalize out the missing data to derived the
+approach is to marginalize out the missing data to derive the
 likelihood of the observed data, which is just the likelihood.  This
 is achived by unfolding the likelihood using our independence
 assumption,
