@@ -932,11 +932,8 @@ from which it arose,
 \section{Master model likelihood}
 
 The source isoform $z_n$ of read $n$ may be treated as a kind of
-missing data.  Another variation of the master model we consider is
-one in which the $z_n$ are known through alignment and censoring out
-ambiguously aligning reads.  We also consider varations in which $z_n$
-is known to fall in a small subset, as we might know after performing
-fast $k$-mer level alignment.
+missing data.  From this angle, the master model is a mixture over
+isoforms.  
 
 \subsection{Complete data likelihood}
 
@@ -978,7 +975,26 @@ and then marginalizing the complete data likelihood for a single read,
   & = & \textstyle \sum_{t=1}^T \textrm{Categorical}(t \mid \theta)
         \cdot \textrm{Categorical}(r_n \mid \phi_t).
 \end{eqnarray*}
-  
+
+\section{Variations of the master model}
+
+Belowm, we will consider a number of specializations and embeddings of
+the master model.  For example, we might have data where the $z_n$ are
+observed in the sense of being derived from alignments.  
+
+We also consider varations in which $z_n$
+is known to fall in a small subset, as we might know after performing
+fast $k$-mer level alignment.
+
+Hierarchical models arise by consider a number of samples and joining
+the priors for expression, allowing partial pooling, also known as
+sharing strength.
+
+Overdispersion due to technical or biological variation may be modeled
+by assuming a random effect for each replicate.  The resulting
+expression is marginally negative binomial for each isoform.
+
+
 \chapter{Distinctively Aligned Reads}
 
 We first consider models where every read is aligned to one and only
