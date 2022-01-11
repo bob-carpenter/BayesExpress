@@ -874,6 +874,112 @@ The relational schema for the aligned reads is shown in the bottom row
 of Table~\ref{tab:rna-seq-data}.
 
 
+\chapter{The Master Model}
+
+Like a master recipe, which may be adapted to different ingredients,
+the master model for RNA sequencing is a generative model of how reads
+are produced, which may be adapted to a wide variety of
+parameterizations, priors, and experimental designs.  The master model
+generates reads by first selecting the isoform from which the read is
+to be selected according to the composition of the sample.  The read
+itself is then generated according to the probability of reads in the
+selected isoform.
+
+\section{Sample composition of isoforms}
+
+Suppose there is a total of $N$ reads targeting $T$ distinct isoforms.
+Our parameter of interest is a simplex $\theta \in \bigtriangleup\!^T$
+denoting the expected composition of our sample.\footnote{The set of
+  $\bigtriangleup\!^T$ of $T$-simplexes is defined by
+  \[
+    \bigtriangleup\!^T
+    = \{ \theta \in \mathbb{R}^T : 
+    \textrm{sum}(\theta) = 1
+    \ \textrm{and} \
+    \theta_t \geq 0 \ \textrm{for all} \ t \in \rngto{T}
+    \}.
+  \]
+}
+Let
+$z_n \in \rngto{T}$ be the isoform from which read $n \in \rngto{N}$
+originates. The basic assumption of the master model is that the reads
+are independent and distributed as
+\[
+  z_n \sim \textrm{Categorical}(\theta).
+\]
+The simplex $\theta$ represents proportion of reads that arise from
+each isoform, which due to biases involved in the laboratory process,
+is typically not the same as the proportion of isoforms.  One of the
+ways in which we will consider modifying the master model is by
+reparametrizing in terms of isoform proportion using estimates of the
+laboratory biases, which allows priors to be expressed on their
+natural scale.
+
+\section{Isoform composition of reads}
+
+Given an isoform source $z_n$, read $n$ will be generated according to
+an isoform-specific simplex $\phi_t$ denoting the probability of a
+given read arising from isoform $t$.  The explicit dimensionality of
+the reads and hence $\phi_t$ is astronomical (e.g., $4^{50}$ for 50~bp
+reads).  For any given isoform $t$, the distribution $\phi_t$ over
+possible reads will be sparse with a size determined by the number of
+reads $L_t$ that may arise from isoform $t$.  Read $n$ is then drawn
+categorically from the distribution of reads for the isoform $t = z_n$
+from which it arose,
+\[
+  r_n \sim \textrm{Categorical}(\phi_{z_n}), 
+\]
+
+\section{Master model likelihood}
+
+The source isoform $z_n$ of read $n$ may be treated as a kind of
+missing data.  Another variation of the master model we consider is
+one in which the $z_n$ are known through alignment and censoring out
+ambiguously aligning reads.  We also consider varations in which $z_n$
+is known to fall in a small subset, as we might know after performing
+fast $k$-mer level alignment.
+
+\subsection{Complete data likelihood}
+
+The complete data likelihood is derived from the independence
+assumption over reads as
+\[
+  p(r, z \mid \theta, \phi)
+  = \prod_{n=1}^N p(r_n, z_n \mid \theta, \phi),
+\]
+where the complete data likelihood for a given read and its source are
+as defined above for the master model,
+\[
+  p(r_n, z_n \mid \theta, \phi)
+  = \textrm{Categorical}(z_n \mid \theta)
+  \cdot \textrm{Categorical}(r_n \mid \phi_{z_n}).
+\]
+
+\subsection{Observed Data likelihood}
+
+The complete data likelihood cannot be used directly because $z_n$ is
+not observed.  One approach might be to estimate the $z_n$ through
+sampling, but sampling discrete variables is a combinatorial problem
+which can often be slow or even intractable.  Instead, the standard
+approach is to marginalize out the missing data to derived the
+likelihood of the observed data, which is just the likelihood.  This
+is achived by unfolding the likelihood using our independence
+assumption,
+\[
+  p(r \mid \theta, \phi)
+  = \prod_{n=1}^N p(r_n \mid \theta, \phi),
+\]
+and then marginalizing the complete data likelihood for a single read,
+\begin{eqnarray*}
+  p(r_n \mid \theta, \phi)
+  & = & \textstyle \sum_{t=1}^T p(r_n, z_n = t \mid \theta, \phi)
+  \\[4pt]
+  & = & \textstyle \sum_{t=1}^T p(z_n = t \mid \theta) \, p(r_n \mid \phi_t)
+  \\[4pt]
+  & = & \textstyle \sum_{t=1}^T \textrm{Categorical}(t \mid \theta)
+        \cdot \textrm{Categorical}(r_n \mid \phi_t).
+\end{eqnarray*}
+  
 \chapter{Distinctively Aligned Reads}
 
 We first consider models where every read is aligned to one and only
