@@ -66,6 +66,11 @@
 \newcommand{\setlist}[1]{\{ #1 \}}
 \newcommand{\setcomp}[2]{\{ #1 \, : \, #2 \}}
 \newcommand{\deriv}[1]{\frac{\textrm{d}}{\textrm{d}#1}}
+\newcommand{\indicator}[1]{\textrm{I}\!\left( #1 \right)}
+
+% basic prob
+\newcommand{\distro}[3]{\textrm{#1}\!\left( #2 \,|\, #3\right)}
+\newcommand{\rdistro}[2]{\textrm{#1}\!\left( #2 \right)}
 
 
 % constants
@@ -725,7 +730,7 @@ of them, an astronomically large number), there are motifs that are
 repeated across genes.
 
 
-\chapter{Data Format}
+\chapter{Data Format}\label{chap:data}
 
 Choosing the format of data we wish to deal with and how we
 characterize it mathematically will determine the kinds of models we
@@ -904,7 +909,7 @@ $z_n \in \rngto{T}$ be the isoform from which read $n \in \rngto{N}$
 originates. The basic assumption of the master model is that the reads
 are independent and distributed as
 \[
-  z_n \sim \textrm{Categorical}(\theta).
+  z_n \sim \rdistro{Categorical}(\theta).
 \]
 The simplex $\theta$ represents proportion of reads that arise from
 each isoform, which due to biases involved in the laboratory process,
@@ -926,7 +931,7 @@ reads $L_t$ that may arise from isoform $t$.  Read $n$ is then drawn
 categorically from the distribution of reads for the isoform $t = z_n$
 from which it arose,
 \[
-  r_n \sim \textrm{Categorical}(\phi_{z_n}), 
+  r_n \sim \rdistro{Categorical}{\phi_{z_n}}, 
 \]
 
 \section{Master model likelihood}
@@ -947,8 +952,8 @@ where the complete data likelihood for a given read and its source are
 as defined above for the master model,
 \[
   p(r_n, z_n \mid \theta, \phi)
-  = \textrm{Categorical}(z_n \mid \theta)
-  \cdot \textrm{Categorical}(r_n \mid \phi_{z_n}).
+  = \distro{Categorical}{z_n}{\theta}
+  \cdot \distro{Categorical}{r_n}{\phi_{z_n}}
 \]
 
 \subsection{Observed Data likelihood}
@@ -972,41 +977,139 @@ and then marginalizing the complete data likelihood for a single read,
   \\[4pt]
   & = & \textstyle \sum_{t=1}^T p(z_n = t \mid \theta) \, p(r_n \mid \phi_t)
   \\[4pt]
-  & = & \textstyle \sum_{t=1}^T \textrm{Categorical}(t \mid \theta)
-        \cdot \textrm{Categorical}(r_n \mid \phi_t).
+  & = & \textstyle \sum_{t=1}^T \distro{Categorical}{t}{\theta}
+        \cdot \distro{Categorical}{r_n}{\phi_t}.
 \end{eqnarray*}
 
-\section{Variations of the master model}
+\subsection{Filtering by alignment}
 
-Belowm, we will consider a number of specializations and embeddings of
-the master model.  For example, we might have data where the $z_n$ are
-observed in the sense of being derived from alignments.  
+In Chapter~\ref{chap:data}, the data for each read includes a set of
+possible targets along with the (log) probability of that read arising
+from that target.  We assume the probability of a read arising is from
+isoform $t$ is recorded on the log scale as
+$\log \distro{Categorical}{r_n}{\phi_t}$.  We assume that the
+parameter $\phi$ is known, or at least that there is an estimate of it
+from a previous calibration experiment over hexamers, positions, etc.
 
-We also consider varations in which $z_n$
-is known to fall in a small subset, as we might know after performing
-fast $k$-mer level alignment.
+In our mathematical notation, we will let $C_n$ be the set of target
+isoforms to which read $r_n$ aligns.  By restricting our summation to
+these compatiblity sets, we can reformulate our likelihood function
+more tractably as
+\[
+  p(r_n \mid \theta, \phi)
+  = \textstyle \sum_{t \in C_n}
+  \distro{Categorical}{t}{\theta}
+  \cdot \textrm{Categorical}{r_n}{\phi_t}
+\]
 
-Hierarchical models arise by consider a number of samples and joining
-the priors for expression, allowing partial pooling, also known as
-sharing strength.
+\section{Expansions of the master model}
 
-Overdispersion due to technical or biological variation may be modeled
-by assuming a random effect for each replicate.  The resulting
-expression is marginally negative binomial for each isoform.
+In what follows, we consider a number of applications,
+specializations, and embeddings of the master model. We will consider
+different cases of alignment, such as unique alignments or reads
+aligned only to exons as we might find in a genome alignment.
+
+We will also consider embedding the master model in hierarchical
+structure, as arises from considering replicates with the same
+expected expression.  Hierarchical models induce partial pooling,
+which is also known as sharing strength because pooling shrinks
+posterior intervals by effectively applying more data to each estimate
+by relating them.
+
+With replicates, there tends to be overidispersion relative to a
+simple binomial model due to technical variation in sample prep or
+biological variation in sample gathering.  We show how adding a random
+effect to the parameterization of $\theta$ leads to a model which is
+marginally negative binomial for each isoform.
+
+We will also consider differential expression contexts, where the
+samples are arranged into two or more groups, and consider how
+posterior event probability inference may be used for direct
+probabilistic comparison.
 
 
 \chapter{Distinctively Aligned Reads}
 
 We first consider models where every read is aligned to one and only
-one target isoform (or gene). The simplicity of such models makes them
-easy to understand and perform inference for. They are thus popular in
-the literature, being deployed in systems such as rMATS
-\citep{shen2014rmats}.
+one target isoform (or gene).  The simplicity of such models makes
+them easy to understand and perform inference for.  They are thus
+popular in the literature, being deployed in systems such as rMATS,
+which uses a hierarchical model of differential expression
+\citep{shen2014rmats}.  The main drawback of models restricted to
+distinct reads is that they lose information by not considering
+ambiguous alignments.  As we show in this chapter, this loss is
+particularly acute for isoform expression where sequences of exons
+typically occur in multiple isoforms.
+
+\section{Singleton compatiblity sets}
+
+The assumption that reads are distinctively aligned means that for
+each read $n$, its compatiblity set (the set of isoforms to which it
+aligns) is a singleton.  We will thus assume for the scope of
+this chapter that
+\[
+  C_n = \setlist{y_n},
+\]
+for some $y_n \in \rngto{T}$.
 
 Even with such simple models, we will be able to explore a variety of
 topics, including length normalization and read bias, parameterization
 of proportions, and how to compare expression levels using Bayesian
 posterior predictive inference.
+
+The immediate consequence of this is that our likelihood function
+greatly simplifies as
+\begin{eqnarray*}
+  p(r \mid \theta, \phi)
+  & = & \textstyle
+        \prod_{n=1}^N p(r_n \mid \theta, \phi)
+  \\[4pt]
+  & = & \textstyle
+        \prod_{n=1}^N \sum_{t \in C_n} \distro{Categorical}{t}{\theta}
+        \cdot \distro{Categorical}{r_n}{\phi_t}
+  \\[4pt]
+  & = & \textstyle
+        \prod_{n=1}^N \distro{Categorical}{y_n}{\theta}
+        \cdot \distro{Categorical}{r_n}{\phi_{y_n}}.
+\end{eqnarray*}
+%
+For computational inference, we only require the posterior density up
+to a multiplicative constant that does not depend on the parameters.
+Because the alignment probabilities $\phi_t$ are assumed to be
+constant, the entire term $\distro{Categorical}{r_n}{\phi_{y_n}}$
+is constant, so we can remove it in considering the log density up to
+a normalizing constant,
+%
+\begin{eqnarray*}
+   p(r \mid \theta, \phi)
+  & = & \textstyle
+        \prod_{n=1}^N \distro{Categorical}{y_n}{\theta}
+        \cdot \distro{Categorical}{r_n}{\phi_{y_n}}
+  \\[4pt]
+  & \propto & \textstyle
+              \prod_{n=1}^N \distro{Categorical}{y_n}{\theta}.
+\end{eqnarray*}
+%
+We now have a product of categorical distributions, which we can
+reduce to a multinomial by first collecting the $y_n$ into a vector
+$u \in \mathbb{N}^T$ of
+counts of each outcome defined by
+\[
+  u_t = \sum_{n=1}^N \indicator{y_n = t}
+\]
+where the indicator function $\indicator{c}$ returns 1 if the
+condition is true and 0 otherwise.
+That is, $u_t$ is the total number of reads that were aligned to
+sequence $t$ in the data set.  This renders our likelihood function in
+a simple form that is efficient to evaluate,
+\begin{eqnarray*}
+   p(r \mid \theta, \phi)
+   & \propto & \textstyle
+              \prod_{n=1}^N \distro{Categorical}{y_n}{\theta}
+  \\[4pt]
+              & \propto & \textstyle
+  \distro{Multinomial}{u}{N, \theta}
+\end{eqnarray*}
 
 
 \section{Beta-binomial: proportion spliced in}
