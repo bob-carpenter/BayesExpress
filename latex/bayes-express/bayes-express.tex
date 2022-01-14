@@ -55,7 +55,7 @@
     dimen/.style={<->,>=latex,thin,every rectangle node/.style={fill=white,midway,font=\sffamily}},
     symmetry/.style={dashed,thin},
   }
-% \usepackage{tocbibind}
+% 15\usepackage{tocbibind}
 \usepackage{verbatimbox}
 \usepackage{xspace}
 
@@ -67,6 +67,7 @@
 \newcommand{\setcomp}[2]{\{ #1 \, : \, #2 \}}
 \newcommand{\deriv}[1]{\frac{\textrm{d}}{\textrm{d}#1}}
 \newcommand{\indicator}[1]{\textrm{I}\!\left( #1 \right)}
+\newcommand{\vect}[1]{[#1]^{\top}}
 
 % basic prob
 \newcommand{\distro}[3]{\textrm{#1}\!\left( #2 \,|\, #3\right)}
@@ -1270,9 +1271,39 @@ to that isoform.  This will be much smaller for the second isoform
 (AC), because only reads crossing the A-C splice junction are
 distinctive.  
 
+To illustrate how this all works, we will write the Stan program to
+implement this model, simulate data according to the model, and then
+inspect the posterior distribution on our quantity of interest $\psi$,
+the proportion spliced in.
 
-Restricting attention to distinctive reads, we will assume that $L_1$
-and $L_2$ are the number of reads and reparameterize in terms of 
+We will simulate data and see what the posteriors look like.  Let's
+start by setting our quantity of interest $\psi = \vect{0.8 \ 0.2}$,
+which is the proportion of ABC and AC isoforms in the sample.
+
+.
+To keep things simple, assume our reads are of length 50 bases and
+that our exons are all of length 200, so that isoform ABC is 600 bases
+and AC is 400 bases.  For isoform ABC, the distinct reads cross one of
+the splice junctions or fall wholly within exon B, so there are
+roughly 50 + 150 + 50 = 250 unique reads from ABC.  For isoform AC,
+the only distinct reads cross the junction, so there are roughly 50 of
+them.
+
+
+Suppose
+we are using reads of 50 bases and have a sample with 50M reads.
+Further suppose our exons A, B, and C are all roughly of length 150
+bases and that there are 100K different isoforms expressed in the
+sample.  Supposing our two isoforms make up 1~/~50K of the sample
+each, we will expect around 50M~/~50K, or about 1K reads per isoform.
+For the ABC isoform, there will be around 250 distinctive reads (150
+wholly within exon B, 50 crossing each junction), so we expect to see
+1K * 250 / 600, or about 415 distinctive reads for isoform ABC.  For
+isoform AC, we only have 50 distinctive reads out of 400, so we expect
+to see 1K * 50 / 400, or about 125 reads.  So we'll simulate data with
+415 distinctive reads for isoform ABC and 125 distinctive reads for
+isoform AC.
+
 
   
 
