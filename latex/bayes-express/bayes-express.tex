@@ -1242,12 +1242,15 @@ simple uniform Dirichlet prior on the molecular proportions,%
 \[
   \psi
   \sim
-  \rdistro{Dirichlet}{[\, 1 \ 1 \,]^{\top}}.
+  \rdistro{Dirichlet}{\vect{1 \ 1}}
 \]
+For completeness, the likelihood is this
 
-To summarize, our generative model is
+To summarize, the entire generative model with prior and sampling
+distribution is, in the general case (where we don't
+necessarily assume the number of targets $T = 2$),
 \begin{eqnarray*}
-  \psi & \sim & \rdistro{Dirichlet}{[1 \ 1]^{\top}}
+  \psi & \sim & \rdistro{Dirichlet}{\vect{1 \ \cdots \ 1}}
   \\[4pt]
   \theta & = & \frac{\displaystyle \psi \cdot L}
                {\displaystyle \textrm{sum}(\psi \cdot L)}
@@ -1257,7 +1260,7 @@ To summarize, our generative model is
 where we have assumed $T \in \mathbb{N}$ is the number of target
 isoforms, $L \in \mathbb{N}^T$ the number of reads for the isoforms,
 $\psi \in \bigtriangleup^T$ the simplex of molecular proportions,
-$\theta \in \bigtriangleup^2$ the simplex of read proportions, with
+$\theta \in \bigtriangleup^T$ the simplex of read proportions, with
 data consisting of the uniquely aligned read counts
 $u \in \mathbb{N}^T$ and total number of reads $N = \textrm{sum}(u)$.
 In the cassette exon example, we are assuming $T = 2$.
