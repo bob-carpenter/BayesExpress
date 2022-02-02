@@ -73,6 +73,8 @@
 \newcommand{\distro}[3]{\textrm{#1}\!\left( #2 \,|\, #3\right)}
 \newcommand{\distrobig}[3]{\textrm{#1}\!\left( #2 \,\bigg|\, #3\right)}
 \newcommand{\rdistro}[2]{\textrm{#1}\!\left( #2 \right)}
+\newcommand{\pone}[1]{p\!\left( #1 \right)}
+\newcommand{\p}[2]{\pone{#1 \,|\, #2}}
 
 
 % constants
@@ -896,13 +898,13 @@ itself according to the probability of reads in the selected isoform.
 Suppose there is a total of $N$ reads targeting $T$ distinct isoforms.
 Our parameter of interest is a simplex $\theta \in \bigtriangleup\!^T$
 denoting the expected composition of our sample.\footnote{The set
-  $\bigtriangleup\!^T$ of $T$-simplexes is defined by
+  $\bigtriangleup\!^K$ of $K$-simplexes is defined by
   \[
-    \bigtriangleup\!^T
-    = \{ \theta \in \mathbb{R}^T : 
+    \bigtriangleup\!^K
+    = \{ \theta \in \mathbb{R}^K : 
     \textrm{sum}(\theta) = 1
     \ \textrm{and} \
-    \theta_t \geq 0 \ \textrm{for all} \ t \in \rngto{T}
+    \theta_k \geq 0 \ \textrm{for all} \ k \in \rngto{K}
     \}.
   \]
 }
@@ -911,19 +913,19 @@ $z_n \in \rngto{T}$ be the isoform from which read $n \in \rngto{N}$
 originates. The basic assumption of the master model is that the reads
 are independent and distributed as
 \[
-  z_n \sim \rdistro{Categorical}(\theta).
+  z_n \sim \rdistro{Categorical}{\theta}.
 \]
 The simplex $\theta$ represents proportion of reads that arise from
 each isoform, which due to biases involved in the laboratory process,
-is typically not the same as the proportion of isoforms.  One of the
-ways in which we will consider modifying the master model is by
-reparametrizing in terms of isoform proportion using estimates of the
-laboratory biases, which allows priors to be expressed on their
-natural scale.
+is typically not the same as the proportion of isoforms expected in
+the sample.  One of the ways in which we will consider modifying the
+master model is by reparametrizing in terms of isoform proportion
+using estimates of the laboratory biases, which allows priors to be
+expressed on their natural scale.
 
 \section{Isoform composition of reads}
 
-Given an isoform source $z_n$, read $n$ will be generated according to
+Given an isoform source $t = z_n$, read $n$ will be generated according to
 an isoform-specific simplex $\phi_t$ denoting the probability of a
 given read arising from isoform $t$.  The explicit dimensionality of
 the reads and hence $\phi_t$ is astronomical (e.g., $4^{50}$ for 50~bp
@@ -933,17 +935,19 @@ reads $L_t$ that may arise from isoform $t$.  Read $n$ is then drawn
 categorically from the distribution of reads for the isoform $t = z_n$
 from which it arose,
 \[
-  r_n \sim \rdistro{Categorical}{\phi_{z_n}}, 
+  r_n \sim \rdistro{Categorical}{\phi_{z_n}}. 
 \]
 
 \section{Master model likelihood}
 
 The source isoform $z_n$ of read $n$ may be treated as a kind of
-missing data.  From this angle, the master model is a mixture over
+missing data.  From this perspective, the master model is a mixture over
 isoforms.  
 
 \subsection{Complete data likelihood}
 
+The complete data likelihood is the likelihood of both the reads $r_n$
+(which are observed) and their sources $z_n$ (which are not observed).
 The complete data likelihood is derived from the independence
 assumption over reads as
 \[
@@ -963,7 +967,7 @@ as defined above for the master model,
 The complete data likelihood cannot be used directly because $z_n$ is
 not observed.  One approach might be to estimate the $z_n$ through
 sampling, but sampling discrete variables is a combinatorial problem
-which can often be slow or even intractable.  Instead, the standard
+which is often slow or even intractable.  Instead, the standard
 approach is to marginalize out the missing data to derive the
 likelihood of the observed data, which is just the likelihood.  This
 is achived by unfolding the likelihood using our independence
@@ -1011,12 +1015,11 @@ specializations, and embeddings of the master model. We will consider
 different cases of alignment, such as unique alignments or reads
 aligned only to exons as we might find in a genome alignment.
 
-We will also consider embedding the master model in hierarchical
-structure, as arises from considering replicates with the same
-expected expression.  Hierarchical models induce partial pooling,
-which is also known as sharing strength because pooling shrinks
-posterior intervals by effectively applying more data to each estimate
-by relating them.
+We will also consider embedding the master model as a component of a
+hierarchical model, for example to model biological or technical
+replicates.  Hierarchical models induce partial pooling, which is also
+known as ``sharing strength'' because pooling shrinks posterior intervals
+by effectively applying more data to each estimate.
 
 With replicates, there tends to be overidispersion relative to a
 simple binomial model due to technical variation in sample prep or
@@ -1098,11 +1101,11 @@ $u \in \mathbb{N}^T$, where
 $u_t$ is the total number of reads that were aligned to
 sequence $t$ in the data set, 
 \[
-  u_t = \sum_{n=1}^N \indicator{y_n = t}
+  u_t = \sum_{n=1}^N \indicator{y_n = t},
 \]
 and $\indicator{c}$ is the indicator function which returns 1 if the
-condition is true and 0 otherwise.  That is, This renders our
-likelihood function in a simple form that is efficient to evaluate,
+condition is true and 0 otherwise.  The final result is 
+a simple likelihood function that is efficient to evaluate,
 \begin{eqnarray*}
    p(r \mid \theta, \phi)
    & \propto & \textstyle
@@ -1114,9 +1117,10 @@ likelihood function in a simple form that is efficient to evaluate,
 
 \section{A Poisson reformulation}
 
-It is popular in genomics models to reformulate multinomial
-distributions in terms of Poisson distributions.  The reformulation
-hinges on assuming the number of reads $N$ is a constant, in which case
+In bioinformatics, it is common practice to reformulate a multinomial
+model in terms of a product of Poisson distributions.  The
+reformulation hinges on assuming the number of reads $N$ is a
+constant, in which case
 \[
   \textstyle
   \distro{Multinomial}{u}{N, \theta}
@@ -1127,8 +1131,8 @@ This is easy to see after expanding the definitions, rearranging a
 bit, and dropping constants,
 \begin{eqnarray*}
   \textstyle \prod_{n=1}^N \distro{Poisson}{u_n}{N \cdot \theta_n}
-  & \propto & \textstyle \prod_{n=1}^N (N \cdot \theta_n)^{u_n}
-              \cdot \exp(-N \cdot \theta_n)
+  & \propto & \exp(-N \cdot \theta_n)
+              \cdot \textstyle \prod_{n=1}^N (N \cdot \theta_n)^{u_n}
   \\[4pt]
   & = & \textstyle \exp\!\left( \sum_{n=1}^N -N \cdot \theta_n \right)
         \cdot \prod_{n=1}^N (N \cdot \theta_n)^{u_n}
@@ -1187,7 +1191,7 @@ distinctive reads for isoform 2 (AC).  If we assume $N =
 \textrm{sum}(u)$ is the total number of reads and $\theta \in
 \bigtriangleup^2$ is a 2-simplex parameter, our likelihood is
 \[
-  u \sim \textrm{Multinomial}(N, \theta).
+  u \sim \distro{Multinomial}{N, \theta}.
 \]
 Thus $\theta_1$ is the probability that a read arises from isoform 1
 and $\theta_2$ that it arises from isoform 2.
@@ -1293,19 +1297,18 @@ the only distinct reads cross the junction, so there are roughly 50 of
 them.
 
 
-Suppose
-we are using reads of 50 bases and have a sample with 50M reads.
-Further suppose our exons A, B, and C are all roughly of length 150
-bases and that there are 100K different isoforms expressed in the
-sample.  Supposing our two isoforms make up 1~/~50K of the sample
-each, we will expect around 50M~/~50K, or about 1K reads per isoform.
-For the ABC isoform, there will be around 250 distinctive reads (150
-wholly within exon B, 50 crossing each junction), so we expect to see
-1K * 250 / 600, or about 415 distinctive reads for isoform ABC.  For
-isoform AC, we only have 50 distinctive reads out of 400, so we expect
-to see 1K * 50 / 400, or about 125 reads.  So we'll simulate data with
-415 distinctive reads for isoform ABC and 125 distinctive reads for
-isoform AC.
+Suppose we are using reads of 50 bases and have a sample with 50M
+reads.  Further suppose our exons A, B, and C are all roughly of
+length 150 bases and that there are 100K different isoforms expressed
+in the sample.  Supposing our two isoforms make up 1~/~50K of the
+sample each, we will expect around 50M~/~50K, or about 1K reads per
+isoform.  For the ABC isoform, there will be around 250 distinctive
+reads (150 wholly within exon B, 50 crossing each junction), so we
+expect to see $1\textrm{K} \times 250 / 600$, or about 415 distinctive
+reads for isoform ABC.  For isoform AC, we only have 50 distinctive
+reads out of 400, so we expect to see $1\textrm{K} \times 50 / 400$,
+or about 125 reads.  So we'll simulate data with 415 distinctive reads
+for isoform ABC and 125 distinctive reads for isoform AC.
 
 
   
