@@ -1342,15 +1342,16 @@ biological or technical variation.
     \includegraphics[width=\textwidth]{img/cassette-posterior.pdf}
   \end{center}
   \mycaption{figure:cassette_histos}{Histograms of posterior samples
-    for the proportion spliced in parameter $\psi_1$.  The data was
-    simulated from a true value of $\psi_1 = 0.8$ (plotted as a
-    vertical red line). The histograms show good calibration (i.e.,
-    the true value shows up in the central posterior interval), as we
-    would expect in a simple Bayesian model like this.  Because of the
-    multinomial sampling variability, simulation resulted in various
-    counts of isoform ABC (335, 340, and 344) under simulation (as
-    described in the text).  This shows why sampling variability in
-    the original data leads to estimation uncertainty in posteriors.}
+    for the proportion spliced in parameter $\psi_1$ with a total of
+    357 distinctively aligned reads.  The data was simulated from a
+    true value of $\psi_1 = 0.8$ (plotted as a vertical red line). The
+    histograms show good calibration (i.e., the true value shows up in
+    the central posterior interval), as we would expect in a simple
+    Bayesian model like this.  Because of the multinomial sampling
+    variability, simulation resulted in various counts of isoform ABC
+    (335, 340, and 344) under simulation (as described in the text).
+    This shows why sampling variability in the original data leads to
+    estimation uncertainty in posteriors.}
 \end{figure}
 %
 Next, we consider how well our model recovers the true values.  We've
@@ -1365,16 +1366,17 @@ the range discovered in our ten sample draws.
   \begin{center}
     \includegraphics[width=\textwidth]{img/cassette-ambig-posterior.pdf}
   \end{center}
-  \mycaption{figure:cassette_histos_ambig}{Histograms of posterior samples
-    for the proportion spliced in parameter $\psi_1$ for the model
-    with ambiguous reads falling entirely within exons A, B, or C.
-    The data was simulated from a true value of $\psi_1 = 0.8$
-    (plotted as a vertical red line). The label on the three simulated
-    runs indicate the number of B exons generated out of a total of
-    1000 exons.  As with the unambiguous model, the histograms show
-    good calibration under the multinomial sampling variability
-    represented by the number of reads of the isoform B
-    (253, 264, 282).  This variability is reflected in posterior estimates.}
+  \mycaption{figure:cassette_histos_ambig}{Histograms of posterior
+    samples for the proportion spliced in parameter $\psi_1$ for the
+    model with 1000 ambiguous reads falling entirely within exons A,
+    B, or C.  The data was simulated from a true value of
+    $\psi_1 = 0.8$ (plotted as a vertical red line). The label on the
+    three simulated runs indicate the number of B exons generated out
+    of a total of 1000 exons.  As with the unambiguous model, the
+    histograms show good calibration under the multinomial sampling
+    variability represented by the number of reads of the isoform B
+    (253, 264, 282).  This variability is reflected in posterior
+    estimates.}
 \end{figure}
 %
 \subsection{Ambiguous reads}
