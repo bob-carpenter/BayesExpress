@@ -1359,6 +1359,63 @@ Section~\ref{sec:stan-cassette}.  In Figure~\ref{figure:cassette_histos},
 we show the posterior for simulations with 335, 340, and 344 to cover
 the range discovered in our ten sample draws.
 
+
+
+\begin{figure}[t!]
+  \begin{center}
+    \includegraphics[width=\textwidth]{img/cassette-ambig-posterior.pdf}
+  \end{center}
+  \mycaption{figure:cassette_histos_ambig}{Histograms of posterior samples
+    for the proportion spliced in parameter $\psi_1$ for the model
+    with ambiguous reads falling entirely within exons A, B, or C.
+    The data was simulated from a true value of $\psi_1 = 0.8$
+    (plotted as a vertical red line). The label on the three simulated
+    runs indicate the number of B exons generated out of a total of
+    1000 exons.  As with the unambiguous model, the histograms show
+    good calibration under the multinomial sampling variability
+    represented by the number of reads of the isoform B
+    (253, 264, 282).  This variability is reflected in posterior estimates.}
+\end{figure}
+%
+\subsection{Ambiguous reads}
+
+Next, we consider estimating the proportion of isoforms ABC and AC
+using only reads that fall entirely within exons A, B, or C.  This
+represents the situation where we align only to the genome without any
+junction reads spanning two exons.  We consider the simple situation
+again where all of the exons are of length 200 and a read is just as
+likely to arise from any position within the exon (for a total of 151
+distinct reads per exon).
+
+We will simulate data for 1000 reads with $\psi = \vect{0.8 \quad 0.2}$ as before.
+In this case, $L = \vect{3 \times 151 \quad 2 \times 151}$, so that
+$\theta = \vect{0.85 \quad 0.15}$.  So we simulate reads from ABC with
+probability 85\% and then reads from exons A, B, and C with equal
+probability.  For the roughly 15\% of the reads from AC, we generate
+reads from exons A and C with equal probability.  Thus our probability
+of a read falling in exon A or C is
+\[
+  \textrm{Pr}[\textrm{read from exon A}]
+  \ = \ \textrm{Pr}[\textrm{read from exon C}]
+  \ = \ 0.85 \times \frac{1}{3} + 0.15 \times \frac{1}{2}
+  \ = \ 0.36.
+\]
+That leaves a probability of 0.28 for a read from exon B.
+
+We simulate three data sets with 1000 reads each, and found that the
+number of exons falling in B was 253, 264, and 282.  The resulting
+posteriors for $\psi_1$ are shown in
+Figure~\ref{figure:cassette_histos_ambig}.  As with our previous figure,
+the true value of $\psi_1$ falls within the central region of the
+posterior.  Even though there are more than twice as many reads
+simulated for this experiment, the posterior uncertainty is still
+higher.  This is because the ambiguous reads do not carry as much
+information as the distinctive reads on a per-read basis.
+Nevertheless, even with no distinctive reads for isoform AC, we are
+still able to make calibrated predictions about expression levels.
+
+
+
   
 
 % BACK MATTER
@@ -1378,10 +1435,17 @@ the range discovered in our ten sample draws.
 
 \section{Cassette exons with unique reads}\label{sec:stan-cassette}
 
-Here is the Stan program for modeling a single cassette exon
-alternation given uniquely aligned read data.
+Here is the Stan program for modeling a single cassette exon 
+alternation given uniquely aligned read data. 
 
 \VerbatimInput[fontsize=\small, xleftmargin=2em]{../../stan/cassette-single-sample.stan}
+
+\section{Cassette exons with ambiguous reads}\label{sec:stan-cassette-ambig}
+
+Here is the Stan program for modeling a single cassette exon 
+given read data and read probabilities.
+
+\VerbatimInput[fontsize=\small, xleftmargin=2em]{../../stan/cassette-ambig.stan}
 
 
 \chapter{Parametric distributions}\label{chap:distributions}
